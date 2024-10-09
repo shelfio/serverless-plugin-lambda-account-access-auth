@@ -17,6 +17,11 @@ plugins:
 provider:
   access:
     groups:
+      authorizergroup: # group to hold authorizer connection with different AWS account
+        policy:
+          principals: apigateway.amazonaws.com
+          sourceArns:
+            - arn:aws:execute-api:111111111111:*/authorizers/* # allow api gateway to invoke functions
       api: # group has both role and policy access configured
         role:
           - name: sample-${self:custom.stage}-lambda-api-${self:custom.region}
