@@ -15,7 +15,7 @@
   "author": "Russell Schick <rschick@bellwoods.ca> & Shelf.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rschick/serverless-plugin-lambda-account-access"
+    "url": "https://github.com/shelfio/serverless-plugin-lambda-account-access-auth"
   },
   "keywords": [
     "serverless",
