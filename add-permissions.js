@@ -69,6 +69,10 @@ const ACCESS_SCHEMA = {
               type: 'object',
               properties: {
                 principals: PRINCIPALS_SCHEMA,
+                sourceArns: {
+                  type: 'array',
+                  items: { type: 'string' }
+                }
               },
               required: ['principals']
             },
@@ -143,9 +147,17 @@ module.exports = class AwsAddLambdaAccountPermissions {
                     FunctionName: {
                       'Fn::GetAtt': [ functionLogicalId, 'Arn' ],
                     },
-                    Principal: normalizedPrincipal
+                    Principal: normalizedPrincipal,
                   }
                 };
+
+                if (policy.sourceArns) {
+                  resource.Properties.Condition = {
+                    ArnLike: {
+                      'AWS:SourceArn': { 'Fn::Join': ['', policy.sourceArns] }
+                    }
+                  };
+                }
 
                 const dependsOn = dependsOnList[functionLogicalId];
                 if (dependsOn) {
@@ -195,7 +207,10 @@ module.exports = class AwsAddLambdaAccountPermissions {
                       Effect: 'Allow',
                       Action: stsAction,
                       Principal: {
-                        AWS: [].concat(principals).map(principal => this.normalizePrincipal(principal).principal)
+                        AWS: [].concat(principals).map(principal => {
+                          const normalized = this.normalizePrincipal(principal);
+                          return normalized.principal instanceof Object ? normalized.principal : normalized.principal.toString();
+                        })
                       }
                     }]
                   },
@@ -268,17 +283,23 @@ module.exports = class AwsAddLambdaAccountPermissions {
   }
 
   normalizePrincipal(principal) {
-    let principalString;
-    const fnName = principal instanceof Object ? Object.keys(principal).find(k => k.indexOf('Fn::') >= 0) : undefined;
-    if (fnName) {
-      principalString = principal[fnName].toString();
-    } else {
-      principal = principal.toString();
-      principalString = principal;
+    if (principal instanceof Object) {
+      const fnName = Object.keys(principal).find(k => k.indexOf('Fn::') >= 0);
+      if (fnName) {
+        return {
+          principal: { [fnName]: principal[fnName] },
+          principalName: this.normalizeName(principal[fnName].toString())
+        };
+      } else if (principal.Service) {
+        return {
+          principal: { Service: principal.Service },
+          principalName: this.normalizeName(principal.Service)
+        };
+      }
     }
-
+    const principalString = principal.toString();
     return {
-      principal,
+      principal: principalString,
       principalName: this.normalizeName(principalString)
     };
   }

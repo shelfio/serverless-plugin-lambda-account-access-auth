@@ -1,6 +1,6 @@
 {
-  "name": "serverless-plugin-lambda-account-access",
-  "version": "4.2.1",
+  "name": "serverless-plugin-lambda-account-access-auth",
+  "version": "4.3.0",
   "engines": {
     "node": ">=8.10"
   },
@@ -12,7 +12,7 @@
     "preversion": "npm test",
     "postversion": "git push --follow-tags"
   },
-  "author": "Russell Schick <rschick@bellwoods.ca>",
+  "author": "Russell Schick <rschick@bellwoods.ca> & Shelf.io",
   "repository": {
     "type": "git",
     "url": "https://github.com/rschick/serverless-plugin-lambda-account-access"
