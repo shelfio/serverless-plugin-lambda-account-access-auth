@@ -73,8 +73,7 @@ const ACCESS_SCHEMA = {
                sourceArns: {
                  type: 'array',
                  items: { type: 'string' }
-               },
-               service: { type: 'boolean' }
+               }
              },
              required: ['principals']
            },
@@ -149,7 +148,7 @@ module.exports = class AwsAddLambdaAccountPermissions {
                    FunctionName: {
                      'Fn::GetAtt': [ functionLogicalId, 'Arn' ],
                    },
-                   Principal: policy.service ? { Service: normalizedPrincipal } : normalizedPrincipal
+                   Principal: normalizedPrincipal
                  }
                };
 

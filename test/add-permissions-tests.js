@@ -1338,9 +1338,7 @@ describe('serverless-plugin-lambda-account-access', function() {
                 'FunctionName': {
                   'Fn::GetAtt': [ 'Function1LambdaFunction', 'Arn' ],
                 },
-                'Principal': {
-                  'Service': 'apigateway.amazonaws.com'
-                }
+                'Principal': 'apigateway.amazonaws.com'
               }
             }
           });
@@ -1380,9 +1378,7 @@ describe('serverless-plugin-lambda-account-access', function() {
                 'FunctionName': {
                   'Fn::GetAtt': [ 'Function1LambdaFunction', 'Arn' ],
                 },
-                'Principal': {
-                  'Service': 'apigateway.amazonaws.com'
-                },
+                'Principal': 'apigateway.amazonaws.com',
                 'SourceArn': 'arn:aws:execute-api:${env:AWS_DEFAULT_REGION}:${ssm:/${env:ENVIRONMENT}/1/account_id}:*/authorizers/*'
               }
             }
