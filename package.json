@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-lambda-account-access-auth",
-  "version": "4.3.0",
+  "version": "4.3.1",
   "engines": {
     "node": ">=8.10"
   },
@@ -12,10 +12,10 @@
     "preversion": "npm test",
     "postversion": "git push --follow-tags"
   },
-  "author": "Russell Schick <rschick@bellwoods.ca> & Shelf.io",
+  "author": "Russell Schick <rschick@bellwoods.ca>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shelfio/serverless-plugin-lambda-account-access-auth"
+    "url": "git+https://github.com/shelfio/serverless-plugin-lambda-account-access-auth.git"
   },
   "keywords": [
     "serverless",
@@ -30,5 +30,11 @@
     "nyc": "^15.1.0",
     "sinon": "^7.5.0"
   },
-  "dependencies": {}
+  "directories": {
+    "test": "test"
+  },
+  "bugs": {
+    "url": "https://github.com/shelfio/serverless-plugin-lambda-account-access-auth/issues"
+  },
+  "homepage": "https://github.com/shelfio/serverless-plugin-lambda-account-access-auth#readme"
 }
