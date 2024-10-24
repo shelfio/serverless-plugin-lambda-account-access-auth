@@ -74,7 +74,7 @@ const ACCESS_SCHEMA = {
                  type: 'array',
                  items: { type: 'string' }
                },
-               sourcePattern: {
+               consumerService: {
                  type: 'string'
                }
              },
@@ -155,14 +155,15 @@ module.exports = class AwsAddLambdaAccountPermissions {
                  }
                };
 
-               if (policy.sourcePattern) {
-                 // Support wildcards in function names for cross-account Lambda invocations
-                 resource.Properties.SourceArn = {
-                   'Fn::Sub': `arn:aws:lambda:\${AWS::Region}:${normalizedPrincipal}:function:${policy.sourcePattern}`
+               if (policy.consumerService) {
+                 // Allow invocation from the specific role
+                 const region = this.serverless.service.provider.region;
+                 const roleName = `${policy.consumerService}-${region}-lambdaRole`;
+                 resource.Properties.Principal = {
+                   'AWS': `arn:aws:iam::${normalizedPrincipal}:role/${roleName}`
                  };
-               } 
-               
-               if (policy.sourceArns && policy.sourceArns.length > 0) {
+                 resource.Properties.StatementId = `AllowInvokeFrom${principalName}`;
+               } else if (policy.sourceArns && policy.sourceArns.length > 0) {
                  resource.Properties.SourceArn = policy.sourceArns[0];
                }
 
@@ -294,6 +295,15 @@ module.exports = class AwsAddLambdaAccountPermissions {
    } else {
      principal = principal.toString();
      principalString = principal;
+   }
+
+   // Extract account ID from assumed role ARN if present
+   if (principalString.includes(':assumed-role/')) {
+     const accountId = principalString.split(':')[4];
+     return {
+       principal: accountId,
+       principalName: this.normalizeName(accountId)
+     };
    }
 
    return {

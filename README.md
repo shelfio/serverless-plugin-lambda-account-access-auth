@@ -21,25 +21,28 @@ provider:
         policy:
           principals: apigateway.amazonaws.com
           sourceArns:
-            - arn:aws:execute-api:111111111111:*/authorizers/* # allow api gateway to invoke functions
-          sourcePattern: 'b-c-*' # allow functions matching pattern b-c-* to invoke this function
+            - arn:aws:execute-api:000000000000:*/authorizers/* # allow api gateway to invoke functions
+      consumer: # group for cross-account lambda role access
+        policy:
+          principals: 000000000000 # consumer account ID
+          consumerService: 'my-service' # service name used to construct the role ARN
       api: # group has both role and policy access configured
         role:
           - name: sample-${self:custom.stage}-lambda-api-${self:custom.region}
             principals: # can be defined as a single value or an array
-              - 222222222222 # principal as accountId
-              - 'arn:aws:iam::333333333333:root' # principal as ARN
-              - Fn::Import: cloudformation-output-arn-2 # principal as CloudFormation Output Value ARN
+              - 111111111111 # principal as accountId
+              - 'arn:aws:iam::222222222222:root' # principal as ARN
+              - Fn::Import: cloudformation-output-arn # principal as CloudFormation Output Value ARN
             allowTagSession: True # can optionally be defined to include sts:TagSession in assume role policy
             maxSessionDuration: 3600 # can optionally be defined to control max duration of an assume role session
         policy:
           principals:
-            - 111111111111
-            - 'arn:aws:iam::222222222222:root'
+            - 333333333333
+            - 'arn:aws:iam::444444444444:root'
             - Fn::Import: cloudformation-output-arn
       other:
         policy:
-          principals: 333333333333
+          principals: 555555555555
 
 functions:
   function1: # access is not allowed

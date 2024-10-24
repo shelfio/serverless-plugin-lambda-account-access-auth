@@ -1471,23 +1471,23 @@ describe("serverless-plugin-lambda-account-access", function () {
           });
       });
 
-      it("should support sourcePattern in policy", function () {
+      it("should support cross-account lambda role access", function () {
         const instance = createTestInstance({
           provider: {
+            region: "eu-central-1",
             access: {
               groups: {
                 api: {
                   policy: {
-                    principals: "apigateway.amazonaws.com",
-                    sourcePattern: "b-c-*",
-                    service: true,
+                    principals: "111111111111",
+                    consumerService: "some-service",
                   },
                 },
               },
             },
           },
           functions: {
-            function1: {
+            testInput: {
               allowAccess: "api",
             },
           },
@@ -1498,18 +1498,17 @@ describe("serverless-plugin-lambda-account-access", function () {
         expect(instance)
           .to.have.nested.property("serverless.service.resources.Resources")
           .that.deep.equals({
-            Function1LambdaFunctionPermitInvokeFromApigatewayAmazonawsCom: {
+            TestInputLambdaFunctionPermitInvokeFrom111111111111: {
               Type: "AWS::Lambda::Permission",
               Properties: {
                 Action: "lambda:InvokeFunction",
                 FunctionName: {
-                  "Fn::GetAtt": ["Function1LambdaFunction", "Arn"],
+                  "Fn::GetAtt": ["TestInputLambdaFunction", "Arn"],
                 },
-                Principal: "apigateway.amazonaws.com",
-                SourceArn: {
-                  "Fn::Sub":
-                    "arn:aws:lambda:${AWS::Region}:apigateway.amazonaws.com:function:b-c-*",
+                Principal: {
+                  "AWS": "arn:aws:iam::111111111111:role/some-service-eu-central-1-lambdaRole"
                 },
+                StatementId: "AllowInvokeFrom111111111111"
               },
             },
           });
