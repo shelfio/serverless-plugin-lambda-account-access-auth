@@ -22,6 +22,7 @@ provider:
           principals: apigateway.amazonaws.com
           sourceArns:
             - arn:aws:execute-api:111111111111:*/authorizers/* # allow api gateway to invoke functions
+          sourcePattern: 'b-c-*' # allow functions matching pattern b-c-* to invoke this function
       api: # group has both role and policy access configured
         role:
           - name: sample-${self:custom.stage}-lambda-api-${self:custom.region}

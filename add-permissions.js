@@ -73,6 +73,9 @@ const ACCESS_SCHEMA = {
                sourceArns: {
                  type: 'array',
                  items: { type: 'string' }
+               },
+               sourcePattern: {
+                 type: 'string'
                }
              },
              required: ['principals']
@@ -152,6 +155,13 @@ module.exports = class AwsAddLambdaAccountPermissions {
                  }
                };
 
+               if (policy.sourcePattern) {
+                 // Support wildcards in function names for cross-account Lambda invocations
+                 resource.Properties.SourceArn = {
+                   'Fn::Sub': `arn:aws:lambda:\${AWS::Region}:${normalizedPrincipal}:function:${policy.sourcePattern}`
+                 };
+               } 
+               
                if (policy.sourceArns && policy.sourceArns.length > 0) {
                  resource.Properties.SourceArn = policy.sourceArns[0];
                }
