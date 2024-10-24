@@ -26,6 +26,9 @@ provider:
         policy:
           principals: 000000000000 # consumer account ID
           consumerService: 'my-service' # service name used to construct the role ARN
+          fns: # required when consumerService is specified
+            - function1 # list of function names from the consumer service
+            - function2
       api: # group has both role and policy access configured
         role:
           - name: sample-${self:custom.stage}-lambda-api-${self:custom.region}

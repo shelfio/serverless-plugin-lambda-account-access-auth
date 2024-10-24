@@ -80,15 +80,6 @@ const ACCESS_SCHEMA = {
                 },
               },
               required: ["principals"],
-              if: {
-                properties: { consumerService: { type: "string" } },
-                required: ["consumerService"],
-              },
-              then: {
-                required: ["fns"],
-                errorMessage:
-                  "When consumerService is specified, fns array is required and cannot be empty",
-              },
             },
           },
           minProperties: 1,
