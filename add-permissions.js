@@ -176,9 +176,7 @@ module.exports = class AwsAddLambdaAccountPermissions {
                         FunctionName: {
                           "Fn::GetAtt": [functionLogicalId, "Arn"],
                         },
-                        Principal: {
-                          AWS: `arn:aws:iam::${normalizedPrincipal}:role/${policy.consumerService}-${stage}-${fn}-${region}-lambdaRole`,
-                        },
+                        Principal: `arn:aws:iam::${normalizedPrincipal}:role/${policy.consumerService}-${stage}-${fn}-${region}-lambdaRole`,
                         StatementId: `Invoke${principalName}${fn}`,
                       },
                     };

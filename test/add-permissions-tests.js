@@ -1520,9 +1520,7 @@ describe("serverless-plugin-lambda-account-access", function () {
                 FunctionName: {
                   "Fn::GetAtt": ["TestInputLambdaFunction", "Arn"],
                 },
-                Principal: {
-                  "AWS": "arn:aws:iam::111111111111:role/some-service-dev-function2-eu-central-1-lambdaRole"
-                },
+                Principal: "arn:aws:iam::111111111111:role/some-service-dev-function2-eu-central-1-lambdaRole",
                 StatementId: "Invoke111111111111function2"
               },
             }
