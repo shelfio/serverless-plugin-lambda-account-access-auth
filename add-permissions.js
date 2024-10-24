@@ -1,314 +1,378 @@
-'use strict';
+"use strict";
 
 const STRING_OR_NUMBER_SCHEMA = {
- anyOf: [
-   { type: 'string' },
-   { type: 'integer' },
- ],
+  anyOf: [{ type: "string" }, { type: "integer" }],
 };
 
 const PRINCIPALS_SCHEMA = {
- anyOf: [
-   {
-     type: 'array',
-     items: STRING_OR_NUMBER_SCHEMA
-   },
-   STRING_OR_NUMBER_SCHEMA,
-   { type: 'string' }
- ]
+  anyOf: [
+    {
+      type: "array",
+      items: STRING_OR_NUMBER_SCHEMA,
+    },
+    STRING_OR_NUMBER_SCHEMA,
+    { type: "string" },
+  ],
 };
 
 const STRING_OR_STRING_ARRAY_SCHEMA = {
- anyOf: [
-   {
-     type: 'array',
-     items: {
-       type: 'string'
-     }
-   },
-   {
-     type: 'string'
-   }
- ]
+  anyOf: [
+    {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    {
+      type: "string",
+    },
+  ],
 };
 
 const ROLE_SCHEMA = {
- type: 'object',
- properties: {
-   name: { type: 'string' },
-   principals: PRINCIPALS_SCHEMA,
-   allowTagSession: { type: 'boolean' },
-   maxSessionDuration: {
-     type: 'integer',
-     minimum: 3600,
-     maximum: 43200,
-   },
- },
- required: ['name', 'principals'],
- additionalProperties: false,
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    principals: PRINCIPALS_SCHEMA,
+    allowTagSession: { type: "boolean" },
+    maxSessionDuration: {
+      type: "integer",
+      minimum: 3600,
+      maximum: 43200,
+    },
+  },
+  required: ["name", "principals"],
+  additionalProperties: false,
 };
 
 const ACCESS_SCHEMA = {
- type: 'object',
- properties: {
-   groups: {
-     type: 'object',
-     patternProperties: {
-       '.+': {
-         type: 'object',
-         properties: {
-           role: {
-             anyOf: [
-               {
-                 type: 'array',
-                 items: ROLE_SCHEMA
-               },
-               ROLE_SCHEMA,
-             ]
-           },
-           policy: {
-             type: 'object',
-             properties: {
-               principals: PRINCIPALS_SCHEMA,
-               sourceArns: {
-                 type: 'array',
-                 items: { type: 'string' }
-               },
-               consumerService: {
-                 type: 'string'
-               }
-             },
-             required: ['principals']
-           },
-         },
-         minProperties: 1,
-         additionalProperties: false,
-       }
-     },
-     minProperties: 1,
-   },
- },
- required: ['groups'],
- additionalProperties: false,
+  type: "object",
+  properties: {
+    groups: {
+      type: "object",
+      patternProperties: {
+        ".+": {
+          type: "object",
+          properties: {
+            role: {
+              anyOf: [
+                {
+                  type: "array",
+                  items: ROLE_SCHEMA,
+                },
+                ROLE_SCHEMA,
+              ],
+            },
+            policy: {
+              type: "object",
+              properties: {
+                principals: PRINCIPALS_SCHEMA,
+                sourceArns: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                consumerService: {
+                  type: "string",
+                },
+                fns: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+              },
+              required: ["principals"],
+              if: {
+                properties: { consumerService: { type: "string" } },
+                required: ["consumerService"],
+              },
+              then: {
+                required: ["fns"],
+                errorMessage:
+                  "When consumerService is specified, fns array is required and cannot be empty",
+              },
+            },
+          },
+          minProperties: 1,
+          additionalProperties: false,
+        },
+      },
+      minProperties: 1,
+    },
+  },
+  required: ["groups"],
+  additionalProperties: false,
 };
 
 module.exports = class AwsAddLambdaAccountPermissions {
- constructor(serverless, options) {
-   this.serverless = serverless;
-   this.options = options;
-   this.provider = this.serverless.getProvider('aws');
-   this.hooks = {
-     'package:createDeploymentArtifacts': () => this.beforeDeploy(),
-   };
+  constructor(serverless, options) {
+    this.serverless = serverless;
+    this.options = options;
+    this.provider = this.serverless.getProvider("aws");
+    this.hooks = {
+      "package:createDeploymentArtifacts": () => this.beforeDeploy(),
+    };
 
-   if (serverless.configSchemaHandler) {
-     if (serverless.configSchemaHandler.defineFunctionProperties) {
-       serverless.configSchemaHandler.defineFunctionProperties('aws', {
-         properties: {
-           allowAccess: STRING_OR_STRING_ARRAY_SCHEMA,
-         },
-       });
-     }
+    if (serverless.configSchemaHandler) {
+      if (serverless.configSchemaHandler.defineFunctionProperties) {
+        serverless.configSchemaHandler.defineFunctionProperties("aws", {
+          properties: {
+            allowAccess: STRING_OR_STRING_ARRAY_SCHEMA,
+          },
+        });
+      }
 
-     if (serverless.configSchemaHandler.defineProvider) {
-       serverless.configSchemaHandler.defineProvider('aws', {
-         provider: {
-           properties: {
-             access: ACCESS_SCHEMA,
-           },
-         }
-       });
-     }
-   }
- }
+      if (serverless.configSchemaHandler.defineProvider) {
+        serverless.configSchemaHandler.defineProvider("aws", {
+          provider: {
+            properties: {
+              access: ACCESS_SCHEMA,
+            },
+          },
+        });
+      }
+    }
+  }
 
- addPermissions(accessConfig) {
-   const { service } = this.serverless;
-   const resources = service.resources = service.resources || {};
-   if (!resources.Resources) {
-     resources.Resources = {};
-   }
+  addPermissions(accessConfig) {
+    const { service } = this.serverless;
+    const resources = (service.resources = service.resources || {});
+    if (!resources.Resources) {
+      resources.Resources = {};
+    }
 
-   Object.keys(accessConfig).reduce((dependsOnList, groupName) => {
-     const { functions, policy, role } = accessConfig[groupName];
+    Object.keys(accessConfig).reduce((dependsOnList, groupName) => {
+      const { functions, policy, role } = accessConfig[groupName];
 
-     if (functions.length !== 0) {
-       if (policy) {
-         [].concat(policy.principals).forEach(principal => {
-           const {
-             principal: normalizedPrincipal,
-             principalName
-           } = this.normalizePrincipal(principal);
+      if (functions.length !== 0) {
+        if (policy) {
+          [].concat(policy.principals).forEach((principal) => {
+            const { principal: normalizedPrincipal, principalName } =
+              this.normalizePrincipal(principal);
 
-           functions.forEach(functionLogicalId => {
-             const resourceName = `${functionLogicalId}PermitInvokeFrom${principalName}`;
+            functions.forEach((functionLogicalId) => {
+              const resourceName = `${functionLogicalId}PermitInvokeFrom${principalName}`;
 
-             if (!resources.Resources[resourceName]) {
-               const resource = {
-                 Type: 'AWS::Lambda::Permission',
-                 Properties: {
-                   Action: 'lambda:InvokeFunction',
-                   FunctionName: {
-                     'Fn::GetAtt': [ functionLogicalId, 'Arn' ],
-                   },
-                   Principal: normalizedPrincipal
-                 }
-               };
+              if (!resources.Resources[resourceName]) {
+                const resource = {
+                  Type: "AWS::Lambda::Permission",
+                  Properties: {
+                    Action: "lambda:InvokeFunction",
+                    FunctionName: {
+                      "Fn::GetAtt": [functionLogicalId, "Arn"],
+                    },
+                    Principal: normalizedPrincipal,
+                  },
+                };
 
-               if (policy.consumerService) {
-                 // Allow invocation from the specific role
-                 const region = this.serverless.service.provider.region;
-                 const roleName = `${policy.consumerService}-${region}-lambdaRole`;
-                 resource.Properties.Principal = {
-                   'AWS': `arn:aws:iam::${normalizedPrincipal}:role/${roleName}`
-                 };
-                 resource.Properties.StatementId = `AllowInvokeFrom${principalName}`;
-               } else if (policy.sourceArns && policy.sourceArns.length > 0) {
-                 resource.Properties.SourceArn = policy.sourceArns[0];
-               }
+                if (policy.consumerService) {
+                  // Allow invocation from the consumer's Lambda execution role
+                  if (!policy.fns || policy.fns.length === 0) {
+                    throw new Error(
+                      "fns array is required and cannot be empty when consumerService is specified"
+                    );
+                  }
+                  const region = this.serverless.service.provider.region;
+                  const stage =
+                    this.options.stage ||
+                    this.serverless.service.provider.stage;
 
-               const dependsOn = dependsOnList[functionLogicalId];
-               if (dependsOn) {
-                 resource.DependsOn = dependsOn;
-               }
+                  // Create separate permissions for each function
+                  policy.fns.forEach((fn) => {
+                    const fnResourceName = `Invoke${principalName}${fn}`;
+                    const fnResource = {
+                      Type: "AWS::Lambda::Permission",
+                      Properties: {
+                        Action: "lambda:InvokeFunction",
+                        FunctionName: {
+                          "Fn::GetAtt": [functionLogicalId, "Arn"],
+                        },
+                        Principal: {
+                          AWS: `arn:aws:iam::${normalizedPrincipal}:role/${policy.consumerService}-${stage}-${fn}-${region}-lambdaRole`,
+                        },
+                        StatementId: `Invoke${principalName}${fn}`,
+                      },
+                    };
+                    resources.Resources[fnResourceName] = fnResource;
+                  });
 
-               resources.Resources[resourceName] = resource;
-               dependsOnList[functionLogicalId] = resourceName;
-             }
-           });
-         });
-       }
+                  return; // Skip creating the original resource
+                } else if (policy.sourceArns && policy.sourceArns.length > 0) {
+                  resource.Properties.SourceArn = policy.sourceArns[0];
+                }
 
-       if (role) {
-         [].concat(role).forEach(({ allowTagSession = false, maxSessionDuration = 3600, name, principals }) => {
-           const resourceName = `LambdaAccessRole${this.normalizeName(name)}`;
-           if (resources.Resources[resourceName]) {
-             throw new Error(`Roles must have unique names [${name}]`);
-           }
+                const dependsOn = dependsOnList[functionLogicalId];
+                if (dependsOn) {
+                  resource.DependsOn = dependsOn;
+                }
 
-           let stsAction = 'sts:AssumeRole';
-           if (allowTagSession) {
-             stsAction = ['sts:AssumeRole', 'sts:TagSession'];
-           }
+                resources.Resources[resourceName] = resource;
+                dependsOnList[functionLogicalId] = resourceName;
+              }
+            });
+          });
+        }
 
-           if (principals.length !== 0) {
-             const resource = {
-               Type: 'AWS::IAM::Role',
-               Properties: {
-                 RoleName: name,
-                 Policies: [{
-                   PolicyName: name,
-                   PolicyDocument: {
-                     Version: '2012-10-17',
-                     Statement: [{
-                       Effect: 'Allow',
-                       Action: 'lambda:InvokeFunction',
-                       Resource: functions.map(functionLogicalId => ({
-                         'Fn::GetAtt': [ functionLogicalId, 'Arn' ]
-                       }))
-                     }]
-                   }
-                 }],
-                 AssumeRolePolicyDocument: {
-                   Version: '2012-10-17',
-                   Statement: [{
-                     Effect: 'Allow',
-                     Action: stsAction,
-                     Principal: {
-                       AWS: [].concat(principals).map(principal => this.normalizePrincipal(principal).principal)
-                     }
-                   }]
-                 },
-                 MaxSessionDuration: maxSessionDuration
-               }
-             };
+        if (role) {
+          []
+            .concat(role)
+            .forEach(
+              ({
+                allowTagSession = false,
+                maxSessionDuration = 3600,
+                name,
+                principals,
+              }) => {
+                const resourceName = `LambdaAccessRole${this.normalizeName(
+                  name
+                )}`;
+                if (resources.Resources[resourceName]) {
+                  throw new Error(`Roles must have unique names [${name}]`);
+                }
 
-             resources.Resources[resourceName] = resource;
-           }
-         });
-       }
-     } else {
-       this.log(`WARNING: Group "${groupName}" is not used`);
-     }
+                let stsAction = "sts:AssumeRole";
+                if (allowTagSession) {
+                  stsAction = ["sts:AssumeRole", "sts:TagSession"];
+                }
 
-     return dependsOnList;
-   }, {});
- }
+                if (principals.length !== 0) {
+                  const resource = {
+                    Type: "AWS::IAM::Role",
+                    Properties: {
+                      RoleName: name,
+                      Policies: [
+                        {
+                          PolicyName: name,
+                          PolicyDocument: {
+                            Version: "2012-10-17",
+                            Statement: [
+                              {
+                                Effect: "Allow",
+                                Action: "lambda:InvokeFunction",
+                                Resource: functions.map(
+                                  (functionLogicalId) => ({
+                                    "Fn::GetAtt": [functionLogicalId, "Arn"],
+                                  })
+                                ),
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                      AssumeRolePolicyDocument: {
+                        Version: "2012-10-17",
+                        Statement: [
+                          {
+                            Effect: "Allow",
+                            Action: stsAction,
+                            Principal: {
+                              AWS: []
+                                .concat(principals)
+                                .map(
+                                  (principal) =>
+                                    this.normalizePrincipal(principal).principal
+                                ),
+                            },
+                          },
+                        ],
+                      },
+                      MaxSessionDuration: maxSessionDuration,
+                    },
+                  };
 
- beforeDeploy() {
-   const { service } = this.serverless;
-   const { functions, provider: { access } = {} } = service;
-   if (typeof functions !== 'object' || !access) {
-     return;
-   }
+                  resources.Resources[resourceName] = resource;
+                }
+              }
+            );
+        }
+      } else {
+        this.log(`WARNING: Group "${groupName}" is not used`);
+      }
 
-   const { groups } = access;
-   const accessConfig = this.compileAccessConfig(groups, functions);
+      return dependsOnList;
+    }, {});
+  }
 
-   this.addPermissions(accessConfig);
- }
+  beforeDeploy() {
+    const { service } = this.serverless;
+    const { functions, provider: { access } = {} } = service;
+    if (typeof functions !== "object" || !access) {
+      return;
+    }
 
- compileAccessConfig(groups, functions) {
-   const accessConfig = Object.keys(groups).reduce((acc, groupName) => {
-     const { policy, role } = groups[groupName];
-     acc[groupName] = {
-       functions: [],
-       policy,
-       role
-     };
+    const { groups } = access;
+    const accessConfig = this.compileAccessConfig(groups, functions);
 
-     return acc;
-   }, {});
+    this.addPermissions(accessConfig);
+  }
 
-   return Object.keys(functions).reduce((acc, functionName) => {
-     const { allowAccess } = functions[functionName];
+  compileAccessConfig(groups, functions) {
+    const accessConfig = Object.keys(groups).reduce((acc, groupName) => {
+      const { policy, role } = groups[groupName];
+      acc[groupName] = {
+        functions: [],
+        policy,
+        role,
+      };
 
-     if (allowAccess) {
-       const functionLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
-       [].concat(allowAccess).forEach(groupName => {
-         const groupConf = acc[groupName];
-         if (!groupConf) {
-           throw new Error(`Function "${functionName}" references an access group "${groupName}" that does not exist`);
-         }
+      return acc;
+    }, {});
 
-         groupConf.functions.push(functionLogicalId);
-       });
-     }
+    return Object.keys(functions).reduce((acc, functionName) => {
+      const { allowAccess } = functions[functionName];
 
-     return acc;
-   }, accessConfig);
- }
+      if (allowAccess) {
+        const functionLogicalId =
+          this.provider.naming.getLambdaLogicalId(functionName);
+        [].concat(allowAccess).forEach((groupName) => {
+          const groupConf = acc[groupName];
+          if (!groupConf) {
+            throw new Error(
+              `Function "${functionName}" references an access group "${groupName}" that does not exist`
+            );
+          }
 
- log(message) {
-   this.serverless.cli.log(`[serverless-plugin-lambda-account-access]: ${message}`);
- }
+          groupConf.functions.push(functionLogicalId);
+        });
+      }
 
- normalizeName(name) {
-   return name.replace(/\b\w/g, l => l.toUpperCase()).replace(/[_\W]+/g, "");
- }
+      return acc;
+    }, accessConfig);
+  }
 
- normalizePrincipal(principal) {
-   let principalString;
-   const fnName = principal instanceof Object ? Object.keys(principal).find(k => k.indexOf('Fn::') >= 0) : undefined;
-   if (fnName) {
-     principalString = principal[fnName].toString();
-   } else {
-     principal = principal.toString();
-     principalString = principal;
-   }
+  log(message) {
+    this.serverless.cli.log(
+      `[serverless-plugin-lambda-account-access]: ${message}`
+    );
+  }
 
-   // Extract account ID from assumed role ARN if present
-   if (principalString.includes(':assumed-role/')) {
-     const accountId = principalString.split(':')[4];
-     return {
-       principal: accountId,
-       principalName: this.normalizeName(accountId)
-     };
-   }
+  normalizeName(name) {
+    return name.replace(/\b\w/g, (l) => l.toUpperCase()).replace(/[_\W]+/g, "");
+  }
 
-   return {
-     principal,
-     principalName: this.normalizeName(principalString)
-   };
- }
+  normalizePrincipal(principal) {
+    let principalString;
+    const fnName =
+      principal instanceof Object
+        ? Object.keys(principal).find((k) => k.indexOf("Fn::") >= 0)
+        : undefined;
+    if (fnName) {
+      principalString = principal[fnName].toString();
+    } else {
+      principal = principal.toString();
+      principalString = principal;
+    }
+
+    // Extract account ID from assumed role ARN if present
+    if (principalString.includes(":assumed-role/")) {
+      const accountId = principalString.split(":")[4];
+      return {
+        principal: accountId,
+        principalName: this.normalizeName(accountId),
+      };
+    }
+
+    return {
+      principal,
+      principalName: this.normalizeName(principalString),
+    };
+  }
 };

@@ -1471,16 +1471,18 @@ describe("serverless-plugin-lambda-account-access", function () {
           });
       });
 
-      it("should support cross-account lambda role access", function () {
+      it("should support cross-account lambda role access with fns array", function () {
         const instance = createTestInstance({
           provider: {
             region: "eu-central-1",
+            stage: "dev",
             access: {
               groups: {
                 api: {
                   policy: {
                     principals: "111111111111",
                     consumerService: "some-service",
+                    fns: ["function1", "function2"]
                   },
                 },
               },
@@ -1498,7 +1500,7 @@ describe("serverless-plugin-lambda-account-access", function () {
         expect(instance)
           .to.have.nested.property("serverless.service.resources.Resources")
           .that.deep.equals({
-            TestInputLambdaFunctionPermitInvokeFrom111111111111: {
+            Invoke111111111111function1: {
               Type: "AWS::Lambda::Permission",
               Properties: {
                 Action: "lambda:InvokeFunction",
@@ -1506,11 +1508,24 @@ describe("serverless-plugin-lambda-account-access", function () {
                   "Fn::GetAtt": ["TestInputLambdaFunction", "Arn"],
                 },
                 Principal: {
-                  "AWS": "arn:aws:iam::111111111111:role/some-service-eu-central-1-lambdaRole"
+                  "AWS": "arn:aws:iam::111111111111:role/some-service-dev-function1-eu-central-1-lambdaRole"
                 },
-                StatementId: "AllowInvokeFrom111111111111"
+                StatementId: "Invoke111111111111function1"
               },
             },
+            Invoke111111111111function2: {
+              Type: "AWS::Lambda::Permission", 
+              Properties: {
+                Action: "lambda:InvokeFunction",
+                FunctionName: {
+                  "Fn::GetAtt": ["TestInputLambdaFunction", "Arn"],
+                },
+                Principal: {
+                  "AWS": "arn:aws:iam::111111111111:role/some-service-dev-function2-eu-central-1-lambdaRole"
+                },
+                StatementId: "Invoke111111111111function2"
+              },
+            }
           });
       });
 
